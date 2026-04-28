@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+html, body {
+  margin: 0;
+  background: transparent;
+  overflow: hidden;
+  font-family: Arial;
+}
+
+#overlay {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: rgba(0,0,0,0.6);
+  color: white;
+  padding: 10px 18px;
+  border-radius: 30px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+#flag {
+  width: 20px;
+}
+</style>
+</head>
+<body>
+
+<div id="overlay">
+  <img id="flag">
+  <span id="city">...</span>
+  <span id="temp">--°C</span>
+  <span id="time">--:--</span>
+</div>
+
+<script>
+const key = "e15f521602b9e7b81a1d10013b4bd2eb";
+
+async function load() {
+  const loc = await fetch("https://ipapi.co/json/").then(r=>r.json());
+
+  document.getElementById("city").innerText = loc.city;
+  document.getElementById("flag").src =
+    "https://flagcdn.com/w40/" + loc.country_code.toLowerCase() + ".png";
+
+  const w = await fetch(
+    `https://api.openweathermap.org/data/2.5/weather?q=${loc.city}&units=metric&appid=${key}`
+  ).then(r=>r.json());
+
+  const t = Math.round(w.main.temp);
+  document.getElementById("temp").innerText = t + "°C";
+
+  let c = t<10?"#00c3ff":t<20?"#00ff9d":t<30?"orange":"red";
+  document.getElementById("overlay").style.boxShadow = "0 0 15px "+c;
+}
+
+function clock(){
+  document.getElementById("time").innerText =
+    new Date().toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});
+}
+
+load();
+clock();
+setInterval(clock,1000);
+setInterval(load,600000);
+</script>
+
+</body>
+</html>
