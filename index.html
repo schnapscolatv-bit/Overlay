@@ -10,62 +10,42 @@ html, body {
   padding: 0;
   background: transparent;
   overflow: hidden;
-  font-family: "Inter", Arial, sans-serif;
+  font-family: Arial, sans-serif;
 }
 
 #overlay {
   position: absolute;
-  top: 25px;
-  right: 25px;
+  top: 20px;
+  right: 20px;
 
-  background: rgba(15, 15, 15, 0.65);
-  backdrop-filter: blur(14px);
+  background: rgba(15,15,15,0.65);
+  backdrop-filter: blur(12px);
 
-  color: #fff;
-  padding: 12px 20px;
+  color: white;
+  padding: 10px 18px;
   border-radius: 999px;
 
   font-size: 18px;
-  font-weight: 500;
-
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 
-  border: 1px solid rgba(255,255,255,0.08);
-  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-
-  transition: all 0.4s ease;
-}
-
-.dot {
-  width: 8px;
-  height: 8px;
-  background: #ff2d2d;
-  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.1);
 }
 
 #flag {
-  width: 24px;
+  width: 22px;
   height: 16px;
-  object-fit: cover;
   border-radius: 3px;
 }
 
-#location { font-weight: 600; }
-#temp { opacity: 0.95; }
-#time { opacity: 0.8; }
-
-.divider {
-  opacity: 0.4;
-}
+.divider { opacity: 0.4; }
 </style>
 </head>
 
 <body>
 
 <div id="overlay">
-  <div class="dot"></div>
   <img id="flag">
   <span id="location">Lade...</span>
   <span class="divider">•</span>
@@ -77,78 +57,85 @@ html, body {
 <script>
 const API = "e15f521602b9e7b81a1d10013b4bd2eb";
 
-// 📍 GPS Standort
-function getLocation() {
+// ⏰ Uhr
+function updateTime() {
+  document.getElementById("time").textContent =
+    new Date().toLocaleTimeString("de-DE", {
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+}
+
+// 🎨 Farbe
+function updateColor(temp) {
+  let color = temp < 10 ? "#00c3ff" :
+              temp < 20 ? "#00ff9d" :
+              temp < 30 ? "orange" : "red";
+
+  document.getElementById("overlay").style.boxShadow =
+    `0 0 15px ${color}`;
+}
+
+// 🌍 FALLBACK (IP)
+async function loadIP() {
+  const loc = await fetch("https://ipapi.co/json/").then(r=>r.json());
+
+  document.getElementById("location").textContent = loc.city;
+  document.getElementById("flag").src =
+    `https://flagcdn.com/w40/${loc.country_code.toLowerCase()}.png`;
+
+  const w = await fetch(
+    `https://api.openweathermap.org/data/2.5/weather?q=${loc.city}&units=metric&appid=${API}`
+  ).then(r=>r.json());
+
+  const temp = Math.round(w.main.temp);
+  document.getElementById("temp").textContent = temp + "°C";
+
+  updateColor(temp);
+}
+
+// 📍 GPS (beste Option)
+function loadGPS() {
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(async (pos) => {
 
       const lat = pos.coords.latitude;
       const lon = pos.coords.longitude;
 
-      // Stadt holen
-      const loc = await fetch(
-        `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=de`
-      ).then(r => r.json());
+      const geo = await fetch(
+        `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}`
+      ).then(r=>r.json());
 
-      const city = loc.city || loc.locality || "Unbekannt";
-      const country = loc.countryCode.toLowerCase();
+      document.getElementById("location").textContent =
+        geo.city || geo.locality;
 
-      document.getElementById("location").textContent = city;
-
-      // Flagge
       document.getElementById("flag").src =
-        `https://flagcdn.com/w40/${country}.png`;
+        `https://flagcdn.com/w40/${geo.countryCode.toLowerCase()}.png`;
 
-      // Wetter
-      const weather = await fetch(
+      const w = await fetch(
         `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${API}`
-      ).then(r => r.json());
+      ).then(r=>r.json());
 
-      const temp = Math.round(weather.main.temp);
+      const temp = Math.round(w.main.temp);
       document.getElementById("temp").textContent = temp + "°C";
 
       updateColor(temp);
 
     }, () => {
-      document.getElementById("location").textContent = "GPS aus";
+      // ❌ GPS blockiert → fallback
+      loadIP();
     });
   } else {
-    document.getElementById("location").textContent = "Kein GPS";
+    loadIP();
   }
 }
 
-// 🎨 Farbe je Temperatur
-function updateColor(temp) {
-  const overlay = document.getElementById("overlay");
-
-  let color;
-
-  if (temp <= 0) color = "#00c3ff";
-  else if (temp <= 10) color = "#4facfe";
-  else if (temp <= 20) color = "#00ff9d";
-  else if (temp <= 30) color = "#ffaa00";
-  else color = "#ff3b3b";
-
-  overlay.style.boxShadow = `0 0 25px ${color}`;
-  overlay.style.border = `1px solid ${color}`;
-}
-
-// ⏰ Uhrzeit
-function updateTime() {
-  const now = new Date();
-  document.getElementById("time").textContent =
-    now.toLocaleTimeString("de-DE", {
-      hour: "2-digit",
-      minute: "2-digit"
-    });
-}
-
 // Start
-getLocation();
 updateTime();
+loadGPS();
 
 setInterval(updateTime, 1000);
-setInterval(getLocation, 600000);
+setInterval(loadGPS, 600000);
 </script>
 
 </body>
