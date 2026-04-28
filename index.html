@@ -1,141 +1,66 @@
 <!DOCTYPE html>
-<html lang="de">
+<html>
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <style>
 html, body {
   margin: 0;
-  padding: 0;
   background: transparent;
   overflow: hidden;
-  font-family: Arial, sans-serif;
+  font-family: Arial;
 }
 
 #overlay {
   position: absolute;
   top: 20px;
   right: 20px;
-
-  background: rgba(15,15,15,0.65);
-  backdrop-filter: blur(12px);
-
+  background: rgba(0,0,0,0.6);
   color: white;
   padding: 10px 18px;
-  border-radius: 999px;
-
-  font-size: 18px;
+  border-radius: 30px;
   display: flex;
-  align-items: center;
   gap: 10px;
-
-  border: 1px solid rgba(255,255,255,0.1);
+  align-items: center;
 }
 
 #flag {
-  width: 22px;
-  height: 16px;
-  border-radius: 3px;
+  width: 20px;
 }
-
-.divider { opacity: 0.4; }
 </style>
 </head>
-
 <body>
 
 <div id="overlay">
-  <img id="flag">
-  <span id="location">Lade...</span>
-  <span class="divider">•</span>
+  <img id="flag" src="https://flagcdn.com/w40/de.png">
+  <span>Hamburg</span>
   <span id="temp">--°C</span>
-  <span class="divider">•</span>
   <span id="time">--:--</span>
 </div>
 
 <script>
-const API = "e15f521602b9e7b81a1d10013b4bd2eb";
+const key = "e15f521602b9e7b81a1d10013b4bd2eb";
 
-// ⏰ Uhr
-function updateTime() {
-  document.getElementById("time").textContent =
-    new Date().toLocaleTimeString("de-DE", {
-      hour: "2-digit",
-      minute: "2-digit"
-    });
-}
-
-// 🎨 Farbe
-function updateColor(temp) {
-  let color = temp < 10 ? "#00c3ff" :
-              temp < 20 ? "#00ff9d" :
-              temp < 30 ? "orange" : "red";
-
-  document.getElementById("overlay").style.boxShadow =
-    `0 0 15px ${color}`;
-}
-
-// 🌍 FALLBACK (IP)
-async function loadIP() {
-  const loc = await fetch("https://ipapi.co/json/").then(r=>r.json());
-
-  document.getElementById("location").textContent = loc.city;
-  document.getElementById("flag").src =
-    `https://flagcdn.com/w40/${loc.country_code.toLowerCase()}.png`;
-
+// Wetter (fest)
+async function weather(){
   const w = await fetch(
-    `https://api.openweathermap.org/data/2.5/weather?q=${loc.city}&units=metric&appid=${API}`
+    `https://api.openweathermap.org/data/2.5/weather?q=Hamburg&units=metric&appid=${key}`
   ).then(r=>r.json());
 
-  const temp = Math.round(w.main.temp);
-  document.getElementById("temp").textContent = temp + "°C";
-
-  updateColor(temp);
+  document.getElementById("temp").innerText =
+    Math.round(w.main.temp) + "°C";
 }
 
-// 📍 GPS (beste Option)
-function loadGPS() {
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(async (pos) => {
-
-      const lat = pos.coords.latitude;
-      const lon = pos.coords.longitude;
-
-      const geo = await fetch(
-        `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}`
-      ).then(r=>r.json());
-
-      document.getElementById("location").textContent =
-        geo.city || geo.locality;
-
-      document.getElementById("flag").src =
-        `https://flagcdn.com/w40/${geo.countryCode.toLowerCase()}.png`;
-
-      const w = await fetch(
-        `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${API}`
-      ).then(r=>r.json());
-
-      const temp = Math.round(w.main.temp);
-      document.getElementById("temp").textContent = temp + "°C";
-
-      updateColor(temp);
-
-    }, () => {
-      // ❌ GPS blockiert → fallback
-      loadIP();
-    });
-  } else {
-    loadIP();
-  }
+// Uhr
+function clock(){
+  document.getElementById("time").innerText =
+    new Date().toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});
 }
 
-// Start
-updateTime();
-loadGPS();
+weather();
+clock();
 
-setInterval(updateTime, 1000);
-setInterval(loadGPS, 600000);
+setInterval(clock,1000);
+setInterval(weather,600000);
 </script>
 
 </body>
