@@ -1,66 +1,154 @@
 <!DOCTYPE html>
-<html>
+<html lang="de">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <style>
 html, body {
   margin: 0;
+  padding: 0;
   background: transparent;
   overflow: hidden;
-  font-family: Arial;
+  font-family: "Inter", Arial, sans-serif;
 }
 
 #overlay {
   position: absolute;
-  top: 20px;
-  right: 20px;
-  background: rgba(0,0,0,0.6);
-  color: white;
-  padding: 10px 18px;
-  border-radius: 30px;
+  top: 25px;
+  right: 25px;
+
+  background: rgba(15, 15, 15, 0.65);
+  backdrop-filter: blur(14px);
+
+  color: #fff;
+  padding: 12px 20px;
+  border-radius: 999px;
+
+  font-size: 18px;
+  font-weight: 500;
+
   display: flex;
-  gap: 10px;
   align-items: center;
+  gap: 12px;
+
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+
+  transition: all 0.4s ease;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  background: #ff2d2d;
+  border-radius: 50%;
 }
 
 #flag {
-  width: 20px;
+  width: 24px;
+  height: 16px;
+  object-fit: cover;
+  border-radius: 3px;
+}
+
+#location { font-weight: 600; }
+#temp { opacity: 0.95; }
+#time { opacity: 0.8; }
+
+.divider {
+  opacity: 0.4;
 }
 </style>
 </head>
+
 <body>
 
 <div id="overlay">
-  <img id="flag" src="https://flagcdn.com/w40/de.png">
-  <span>Hamburg</span>
+  <div class="dot"></div>
+  <img id="flag">
+  <span id="location">Lade...</span>
+  <span class="divider">•</span>
   <span id="temp">--°C</span>
+  <span class="divider">•</span>
   <span id="time">--:--</span>
 </div>
 
 <script>
-const key = "e15f521602b9e7b81a1d10013b4bd2eb";
+const API = "e15f521602b9e7b81a1d10013b4bd2eb";
 
-// Wetter (fest)
-async function weather(){
-  const w = await fetch(
-    `https://api.openweathermap.org/data/2.5/weather?q=Hamburg&units=metric&appid=${key}`
-  ).then(r=>r.json());
+// 📍 GPS Standort
+function getLocation() {
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(async (pos) => {
 
-  document.getElementById("temp").innerText =
-    Math.round(w.main.temp) + "°C";
+      const lat = pos.coords.latitude;
+      const lon = pos.coords.longitude;
+
+      // Stadt holen
+      const loc = await fetch(
+        `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=de`
+      ).then(r => r.json());
+
+      const city = loc.city || loc.locality || "Unbekannt";
+      const country = loc.countryCode.toLowerCase();
+
+      document.getElementById("location").textContent = city;
+
+      // Flagge
+      document.getElementById("flag").src =
+        `https://flagcdn.com/w40/${country}.png`;
+
+      // Wetter
+      const weather = await fetch(
+        `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${API}`
+      ).then(r => r.json());
+
+      const temp = Math.round(weather.main.temp);
+      document.getElementById("temp").textContent = temp + "°C";
+
+      updateColor(temp);
+
+    }, () => {
+      document.getElementById("location").textContent = "GPS aus";
+    });
+  } else {
+    document.getElementById("location").textContent = "Kein GPS";
+  }
 }
 
-// Uhr
-function clock(){
-  document.getElementById("time").innerText =
-    new Date().toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});
+// 🎨 Farbe je Temperatur
+function updateColor(temp) {
+  const overlay = document.getElementById("overlay");
+
+  let color;
+
+  if (temp <= 0) color = "#00c3ff";
+  else if (temp <= 10) color = "#4facfe";
+  else if (temp <= 20) color = "#00ff9d";
+  else if (temp <= 30) color = "#ffaa00";
+  else color = "#ff3b3b";
+
+  overlay.style.boxShadow = `0 0 25px ${color}`;
+  overlay.style.border = `1px solid ${color}`;
 }
 
-weather();
-clock();
+// ⏰ Uhrzeit
+function updateTime() {
+  const now = new Date();
+  document.getElementById("time").textContent =
+    now.toLocaleTimeString("de-DE", {
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+}
 
-setInterval(clock,1000);
-setInterval(weather,600000);
+// Start
+getLocation();
+updateTime();
+
+setInterval(updateTime, 1000);
+setInterval(getLocation, 600000);
 </script>
 
 </body>
