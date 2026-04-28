@@ -17,33 +17,39 @@ html, body {
   position: absolute;
   top: 20px;
   right: 20px;
-  background: rgba(15,15,15,0.65);
+
+  background: rgba(15,15,15,0.7);
   backdrop-filter: blur(12px);
+
   color: white;
   padding: 12px 20px;
   border-radius: 999px;
+
   font-size: 18px;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+
   border: 1px solid rgba(255,255,255,0.1);
 }
 
 #flag {
-  width: 22px;
+  width: 24px;
   height: 16px;
   border-radius: 3px;
 }
 
-.divider { opacity: 0.4; }
+.divider {
+  opacity: 0.4;
+}
 </style>
 </head>
 
 <body>
 
 <div id="overlay">
-  <img id="flag">
-  <span id="location">Lade...</span>
+  <img id="flag" src="https://flagcdn.com/w40/de.png">
+  <span id="location">Hamburg</span>
   <span class="divider">•</span>
   <span id="temp">--°C</span>
   <span class="divider">•</span>
@@ -53,7 +59,7 @@ html, body {
 <script>
 const API = "e15f521602b9e7b81a1d10013b4bd2eb";
 
-// ⏰ Uhr (läuft IMMER)
+// ⏰ Uhr läuft IMMER
 function updateTime() {
   document.getElementById("time").textContent =
     new Date().toLocaleTimeString("de-DE", {
@@ -62,91 +68,36 @@ function updateTime() {
     });
 }
 
-// 🎨 Farbe
-function updateColor(temp) {
-  let color = temp < 10 ? "#00c3ff" :
-              temp < 20 ? "#00ff9d" :
-              temp < 30 ? "orange" : "red";
-
-  document.getElementById("overlay").style.boxShadow =
-    `0 0 15px ${color}`;
-}
-
-// 🌍 IP FALLBACK (läuft fast immer)
-async function loadIP() {
+// 🌡️ Wetter (stabil, feste Stadt)
+async function updateWeather() {
   try {
-    const res = await fetch("https://ipapi.co/json/");
+    const res = await fetch(
+      `https://api.openweathermap.org/data/2.5/weather?q=Hamburg&units=metric&appid=${API}`
+    );
     const data = await res.json();
 
-    document.getElementById("location").textContent = data.city;
-    document.getElementById("flag").src =
-      `https://flagcdn.com/w40/${data.country_code.toLowerCase()}.png`;
-
-    const w = await fetch(
-      `https://api.openweathermap.org/data/2.5/weather?q=${data.city}&units=metric&appid=${API}`
-    ).then(r=>r.json());
-
-    const temp = Math.round(w.main.temp);
+    const temp = Math.round(data.main.temp);
     document.getElementById("temp").textContent = temp + "°C";
 
-    updateColor(temp);
+    // Farbe
+    let color = temp < 10 ? "#00c3ff" :
+                temp < 20 ? "#00ff9d" :
+                temp < 30 ? "orange" : "red";
+
+    document.getElementById("overlay").style.boxShadow =
+      `0 0 15px ${color}`;
 
   } catch {
-    document.getElementById("location").textContent = "Offline";
+    document.getElementById("temp").textContent = "--°C";
   }
-}
-
-// 📍 GPS (wenn erlaubt)
-function loadGPS() {
-  if (!navigator.geolocation) {
-    loadIP();
-    return;
-  }
-
-  navigator.geolocation.getCurrentPosition(async (pos) => {
-    try {
-      const lat = pos.coords.latitude;
-      const lon = pos.coords.longitude;
-
-      const geo = await fetch(
-        `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}`
-      ).then(r=>r.json());
-
-      document.getElementById("location").textContent =
-        geo.city || geo.locality || "Unbekannt";
-
-      document.getElementById("flag").src =
-        `https://flagcdn.com/w40/${geo.countryCode.toLowerCase()}.png`;
-
-      const w = await fetch(
-        `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${API}`
-      ).then(r=>r.json());
-
-      const temp = Math.round(w.main.temp);
-      document.getElementById("temp").textContent = temp + "°C";
-
-      updateColor(temp);
-
-    } catch {
-      loadIP();
-    }
-
-  }, () => {
-    loadIP(); // wenn GPS blockiert
-  }, {
-    timeout: 4000
-  });
 }
 
 // Start
 updateTime();
-loadGPS();
-
-// Backup falls ALLES failt
-setTimeout(loadIP, 5000);
+updateWeather();
 
 setInterval(updateTime, 1000);
-setInterval(loadGPS, 600000);
+setInterval(updateWeather, 600000);
 </script>
 
 </body>
