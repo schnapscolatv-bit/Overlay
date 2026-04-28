@@ -18,7 +18,7 @@ html, body {
   top: 20px;
   right: 20px;
 
-  background: rgba(15,15,15,0.7);
+  background: rgba(15,15,15,0.65);
   backdrop-filter: blur(12px);
 
   color: white;
@@ -28,28 +28,26 @@ html, body {
   font-size: 18px;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 
   border: 1px solid rgba(255,255,255,0.1);
 }
 
 #flag {
-  width: 24px;
+  width: 22px;
   height: 16px;
   border-radius: 3px;
 }
 
-.divider {
-  opacity: 0.4;
-}
+.divider { opacity: 0.4; }
 </style>
 </head>
 
 <body>
 
 <div id="overlay">
-  <img id="flag" src="https://flagcdn.com/w40/de.png">
-  <span id="location">Hamburg</span>
+  <img id="flag">
+  <span id="location">Lade...</span>
   <span class="divider">•</span>
   <span id="temp">--°C</span>
   <span class="divider">•</span>
@@ -59,7 +57,7 @@ html, body {
 <script>
 const API = "e15f521602b9e7b81a1d10013b4bd2eb";
 
-// ⏰ Uhr läuft IMMER
+// ⏰ Uhr (läuft IMMER)
 function updateTime() {
   document.getElementById("time").textContent =
     new Date().toLocaleTimeString("de-DE", {
@@ -68,36 +66,55 @@ function updateTime() {
     });
 }
 
-// 🌡️ Wetter (stabil, feste Stadt)
-async function updateWeather() {
-  try {
-    const res = await fetch(
-      `https://api.openweathermap.org/data/2.5/weather?q=Hamburg&units=metric&appid=${API}`
-    );
-    const data = await res.json();
+// 🎨 Farbe
+function updateColor(temp) {
+  let color = temp < 10 ? "#00c3ff" :
+              temp < 20 ? "#00ff9d" :
+              temp < 30 ? "orange" : "red";
 
-    const temp = Math.round(data.main.temp);
+  document.getElementById("overlay").style.boxShadow =
+    `0 0 15px ${color}`;
+}
+
+// 🌍 STABILE IP LOCATION
+async function loadData() {
+  try {
+    // Standort
+    const locRes = await fetch("https://ipapi.co/json/");
+    const loc = await locRes.json();
+
+    document.getElementById("location").textContent =
+      loc.city || loc.country_name;
+
+    document.getElementById("flag").src =
+      `https://flagcdn.com/w40/${loc.country_code.toLowerCase()}.png`;
+
+    // Wetter
+    const weatherRes = await fetch(
+      `https://api.openweathermap.org/data/2.5/weather?q=${loc.city}&units=metric&appid=${API}`
+    );
+    const weather = await weatherRes.json();
+
+    const temp = Math.round(weather.main.temp);
     document.getElementById("temp").textContent = temp + "°C";
 
-    // Farbe
-    let color = temp < 10 ? "#00c3ff" :
-                temp < 20 ? "#00ff9d" :
-                temp < 30 ? "orange" : "red";
-
-    document.getElementById("overlay").style.boxShadow =
-      `0 0 15px ${color}`;
+    updateColor(temp);
 
   } catch {
+    document.getElementById("location").textContent = "Offline";
     document.getElementById("temp").textContent = "--°C";
   }
 }
 
 // Start
 updateTime();
-updateWeather();
+loadData();
+
+// Backup (falls irgendwas hängt)
+setTimeout(loadData, 3000);
 
 setInterval(updateTime, 1000);
-setInterval(updateWeather, 600000);
+setInterval(loadData, 600000);
 </script>
 
 </body>
